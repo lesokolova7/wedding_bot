@@ -2,6 +2,7 @@ import telebot
 from telebot import types
 import requests
 import json
+from bs4 import BeautifulSoup
 
 
 api_token = '6600003289:AAEig0_NbSXFa_GXlgw16Z54DozQ_xwnJY4'
@@ -124,53 +125,55 @@ def message_reply(message):
 
 
 def weather():
-    url = 'http://api.weatherapi.com/v1/future.json?key=2638c6fa72f74196bd991129233007&q=Sankt-Peterburg&&dt=2023-08-16'
+    r = requests.get('https://pogoda.365c.ru/russia/sankt_peterburg/d/16-avgusta')
 
-    response = requests.get(url)
+    soup = BeautifulSoup(r.text, 'html.parser')
 
-    results = json.loads(response.text)
+    # temperature - средняя температура днем
+    temperature_data = soup.find_all('div', {'class': 'temp'})
+    temperature_sort = [i.text for i in temperature_data]
+    temperature = temperature_sort[0][:-1]
+
+    # давление, влажность, ветер, вероятность осадков
+    weather_data = soup.find_all('div', {'class': 'leftcol'})
+    weather_sort = [i.text for i in weather_data]
+
+    pressure = weather_sort[0]
+    humidity = weather_sort[1]
+    wind_value = weather_sort[2][-10:-5]
+    rain = weather_sort[3]
 
     # определение количества осадков
-    rain_mm = results['forecast']['forecastday'][0]['day']['totalprecip_mm']
-    if rain_mm < 0.5:
-        rain = 'не ожидаются'
-    elif 1 < rain_mm < 5:
-        rain = 'слабые'
-    elif 5 < rain_mm < 15:
-        rain = 'умеренные'
-    elif 15 < rain_mm < 25:
-        rain = 'сильные'
-    else:
-        rain = 'очень сильные'
 
-    # максимальная температура днем
-    max_temp = results['forecast']['forecastday'][0]['day']['maxtemp_c']
-
-    # минимальная температура днем
-    min_temp = results['forecast']['forecastday'][0]['day']['mintemp_c']
+    # if rain_mm < 0.5:
+    #     rain = 'не ожидаются'
+    # elif 1 < rain_mm < 5:
+    #     rain = 'слабые'
+    # elif 5 < rain_mm < 15:
+    #     rain = 'умеренные'
+    # elif 15 < rain_mm < 25:
+    #     rain = 'сильные'
+    # else:
+    #     rain = 'очень сильные'
 
     # определение силы ветра
-    wind_value = round(results['forecast']['forecastday'][0]['day']['maxwind_kph'] * 0.277778, 2)
 
-    if wind_value < 5:
-        wind = 'слабый'
-    elif 5 < wind_value < 15:
-        wind = 'умеренный'
-    elif 15 < wind_value < 25:
-        wind = 'сильный'
-    else:
-        wind = 'очень сильный'
+    # if wind_value < 5:
+    #     wind = 'слабый'
+    # elif 5 < wind_value < 15:
+    #     wind = 'умеренный'
+    # elif 15 < wind_value < 25:
+    #     wind = 'сильный'
+    # else:
+    #     wind = 'очень сильный'
 
-    # влажность
-    humidity = results['forecast']['forecastday'][0]['day']['avghumidity']
-
-    return f'<b>ПОГОДА 16 АВГУСТА</b>\n' \
-           f'Санкт-Петербург\n\n' \
-           f'🌡️ Максимальная температура: {max_temp}°C\n\n' \
-           f'🥶 Минимальная температура: {min_temp}°C\n\n' \
-           f'🌧️ Количество осадков: {rain_mm} мм - {rain}\n\n' \
-           f'💨 Сила ветра: {wind_value} м/с - {wind}\n\n' \
-           f'💧 Влажность: {humidity}%'
+    return f'<b>ПОГОДА 16 АВГУСТА</b>\n'\
+           f'Санкт-Петербург\n\n'\
+           f'🌡️ Средняя температура днем:  {temperature}°C\n\n'\
+           f'🌧️ {rain[:19]}: {rain[19:]}\n\n'\
+           f'💨 Сила ветра: {wind_value}\n\n'\
+           f'💧 {humidity[:17]}: {humidity[17:]} \n\n'\
+           f'☁️ {pressure[:8]}: {pressure[8:]}\n\n'
 
 
 bot.infinity_polling()
